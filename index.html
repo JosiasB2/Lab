@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab Companion</title>
+<style>
+  html,body{margin:0;height:100%;}
+  body{
+    display:flex;flex-direction:column;box-sizing:border-box;padding:10px;
+    font:13px/1.4 system-ui,-apple-system,Segoe UI,sans-serif;color:#1a1a1e;
+    background:rgba(245,245,248,.72);
+    min-height:100%;
+  }
+  body.dim{opacity:.08;}
+  #app{display:flex;flex-direction:column;height:100%;min-height:320px;}
+  #top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;}
+  #top b{font-size:11px;letter-spacing:.08em;color:#3a3a44;}
+  #status{font-size:11px;color:#6a6a74;}
+  #log{
+    flex:1;overflow:auto;white-space:pre-wrap;
+    background:rgba(255,255,255,.55);border-radius:12px;padding:10px;
+  }
+  #row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+  #q,#model,button{
+    border:0;border-radius:12px;padding:10px;font:inherit;
+  }
+  #q{flex:1;min-width:120px;background:rgba(255,255,255,.8);}
+  #model{background:rgba(255,255,255,.8);}
+  button{background:#2ee59d;color:#082016;font-weight:700;cursor:pointer;}
+  button.ghost{background:rgba(255,255,255,.7);}
+  .hint{margin-top:6px;font-size:10px;color:#6a6a74;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top">
+    <b>LAB COMPANION</b>
+    <span id="status">ready</span>
+  </div>
+  <div id="log">Open this from GitHub Pages (https). Click Float. Leave the tab open.</div>
+  <div id="row">
+    <select id="model">
+      <option value="fast">Fast</option>
+      <option value="smart">Smart</option>
+    </select>
+    <input id="q" placeholder="Ask..." autocomplete="off">
+    <button type="button" id="go">Go</button>
+    <button type="button" id="float" class="ghost">Float</button>
+  </div>
+  <div class="hint" id="hint">Needs HTTPS + Float. Parent tab stays open.</div>
+</div>
+<script>
+(function(){
+  var PROXY = 'https://script.google.com/macros/s/AKfycbzd125BCGEQfSyAyBzgeH0FmkIL7chGh4tiAxAmBjC8uRNO2rsSzXY1NCTVv6NcjHBBpA/exec';
+
+  var body = document.body;
+  var logEl = document.getElementById('log');
+  var q = document.getElementById('q');
+  var status = document.getElementById('status');
+  var go = document.getElementById('go');
+  var floatBtn = document.getElementById('float');
+  var hint = document.getElementById('hint');
+  var hideTimer = null;
+  var locked = false;
+
+  function show(){ body.classList.remove('dim'); }
+  function hide(){
+    if (!locked && document.activeElement !== q) body.classList.add('dim');
+  }
+  body.addEventListener('mouseenter', function(){ clearTimeout(hideTimer); show(); });
+  body.addEventListener('mouseleave', function(){ hideTimer = setTimeout(hide, 220); });
+  window.addEventListener('keydown', function(e){
+    if (e.altKey && (e.key === 'g' || e.key === 'G')) {
+      e.preventDefault();
+      if (body.classList.contains('dim')) show(); else hide();
+      locked = !body.classList.contains('dim');
+    }
+  });
+  q.addEventListener('focus', show);
+
+  function add(t){
+    logEl.textContent = t;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function proxyReady(){
+    return PROXY && PROXY.indexOf('http') === 0 && PROXY.indexOf('PASTE_') === -1;
+  }
+
+  async function ask(){
+    var text = q.value.trim();
+    if (!text) return;
+    var model = document.getElementById('model').value;
+    q.value = '';
+    show();
+    status.textContent = 'thinking...';
+    go.disabled = true;
+    add('You: ' + text + '\n\n...');
+    if (!proxyReady()) {
+      add('PROXY URL is missing.');
+      status.textContent = 'setup';
+      go.disabled = false;
+      return;
+    }
+    try {
+      var r = await fetch(PROXY, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ prompt: text, model: model }),
+        redirect: 'follow'
+      });
+      var raw = await r.text();
+      var data;
+      try { data = JSON.parse(raw); } catch (e) { data = { text: raw.slice(0, 400) }; }
+      add(String((data && data.text) || raw).trim());
+      status.textContent = 'ready';
+    } catch (err) {
+      add('Error: ' + err.message + '\n\nCheck the Script /exec URL and that access is Anyone.');
+      status.textContent = 'error';
+    }
+    go.disabled = false;
+  }
+
+  async function floatHud(){
+    if (!('documentPictureInPicture' in window)) {
+      hint.textContent = 'This Chrome/Edge has no Document PiP. Update Chrome.';
+      return;
+    }
+    if (!window.isSecureContext) {
+      hint.textContent = 'PiP needs HTTPS. Open the GitHub Pages URL, not a USB file.';
+      return;
+    }
+    if (window !== window.top) {
+      hint.textContent = 'PiP needs a top-level tab. Open the Pages URL directly.';
+      return;
+    }
+    try {
+      if (window.documentPictureInPicture.window) {
+        window.documentPictureInPicture.window.close();
+      }
+      var pip = await window.documentPictureInPicture.requestWindow({
+        width: 400,
+        height: 380
+      });
+      var style = document.querySelector('style');
+      if (style) pip.document.head.appendChild(style.cloneNode(true));
+      pip.document.body.appendChild(document.getElementById('app'));
+      pip.document.body.style.margin = '0';
+      pip.document.body.style.height = '100%';
+      hint.textContent = 'Floating. Leave this tab open.';
+      pip.addEventListener('pagehide', function(){
+        var app = pip.document.getElementById('app');
+        if (app) document.body.insertBefore(app, hint);
+      });
+    } catch (err) {
+      hint.textContent = 'Float failed: ' + err.message;
+    }
+  }
+
+  go.addEventListener('click', ask);
+  q.addEventListener('keydown', function(e){ if (e.key === 'Enter') ask(); });
+  floatBtn.addEventListener('click', floatHud);
+
+  if (!window.isSecureContext) {
+    hint.textContent = 'Not HTTPS — Float will fail. Use GitHub Pages.';
+  } else if (!('documentPictureInPicture' in window)) {
+    hint.textContent = 'No Document PiP in this browser.';
+  }
+  setTimeout(hide, 1800);
+})();
+</script>
+</body>
+</html>
