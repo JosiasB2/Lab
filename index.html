@@ -22,9 +22,7 @@
     background:rgba(255,255,255,.55);border-radius:12px;padding:10px;
   }
   #row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
-  #q,#model,button{
-    border:0;border-radius:12px;padding:10px;font:inherit;
-  }
+  #q,#model,button{border:0;border-radius:12px;padding:10px;font:inherit;}
   #q{flex:1;min-width:120px;background:rgba(255,255,255,.8);}
   #model{background:rgba(255,255,255,.8);}
   button{background:#2ee59d;color:#082016;font-weight:700;cursor:pointer;}
@@ -34,11 +32,8 @@
 </head>
 <body>
 <div id="app">
-  <div id="top">
-    <b>LAB COMPANION</b>
-    <span id="status">ready</span>
-  </div>
-  <div id="log">Open this from GitHub Pages. Click Float on school Chrome. Leave the tab open.</div>
+  <div id="top"><b>LAB COMPANION</b><span id="status">ready</span></div>
+  <div id="log">Type 2+3 then Go. On school Chrome tap Float and leave this tab open.</div>
   <div id="row">
     <select id="model">
       <option value="fast">Fast</option>
@@ -48,106 +43,61 @@
     <button type="button" id="go">Go</button>
     <button type="button" id="float" class="ghost">Float</button>
   </div>
-  <div class="hint" id="hint">Needs HTTPS + Float. Parent tab stays open.</div>
+  <div class="hint" id="hint">Float works on school Chrome, not iPhone Safari.</div>
 </div>
 <script>
 (function(){
-  var PROXY = 'https://script.google.com/macros/s/AKfycbyiqZURDNz7yco2i9kZZQWLhsGVNv0TbSR5jxhMLYKY24PmXs3f2Tg3ppOXe_KT2CK6qw/exec';
-
-  var body = document.body;
-  var logEl = document.getElementById('log');
-  var q = document.getElementById('q');
-  var status = document.getElementById('status');
-  var go = document.getElementById('go');
-  var floatBtn = document.getElementById('float');
-  var hint = document.getElementById('hint');
-  var hideTimer = null;
-  var locked = false;
-
-  function show(){ body.classList.remove('dim'); }
-  function hide(){
-    if (!locked && document.activeElement !== q) body.classList.add('dim');
-  }
-  body.addEventListener('mouseenter', function(){ clearTimeout(hideTimer); show(); });
-  body.addEventListener('mouseleave', function(){ hideTimer = setTimeout(hide, 220); });
-  window.addEventListener('keydown', function(e){
-    if (e.altKey && (e.key === 'g' || e.key === 'G')) {
-      e.preventDefault();
-      if (body.classList.contains('dim')) show(); else hide();
-      locked = !body.classList.contains('dim');
-    }
+  var PROXY = 'https://script.google.com/macros/s/AKfycbxGcacaIhVIMuAiKXHcjgSj9w9QCuk1eHzaSB_j4FWsseLFqQp2kdnUrypKjymWq3tbqw/exec';
+  var body=document.body, logEl=document.getElementById('log'), q=document.getElementById('q');
+  var status=document.getElementById('status'), go=document.getElementById('go');
+  var floatBtn=document.getElementById('float'), hint=document.getElementById('hint');
+  var hideTimer=null, locked=false;
+  function show(){body.classList.remove('dim');}
+  function hide(){if(!locked && document.activeElement!==q) body.classList.add('dim');}
+  body.addEventListener('mouseenter',function(){clearTimeout(hideTimer);show();});
+  body.addEventListener('mouseleave',function(){hideTimer=setTimeout(hide,220);});
+  window.addEventListener('keydown',function(e){
+    if(e.altKey&&(e.key==='g'||e.key==='G')){e.preventDefault();
+      if(body.classList.contains('dim'))show();else hide();
+      locked=!body.classList.contains('dim');}
   });
-  q.addEventListener('focus', show);
-
-  function add(t){
-    logEl.textContent = t;
-    logEl.scrollTop = logEl.scrollHeight;
-  }
-
+  q.addEventListener('focus',show);
+  function add(t){logEl.textContent=t;logEl.scrollTop=logEl.scrollHeight;}
   async function ask(){
-    var text = q.value.trim();
-    if (!text) return;
-    var model = document.getElementById('model').value;
-    q.value = '';
-    show();
-    status.textContent = 'thinking...';
-    go.disabled = true;
-    add('You: ' + text + '\n\n...');
-    try {
-      var r = await fetch(PROXY, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ prompt: text, model: model }),
-        redirect: 'follow'
-      });
-      var raw = await r.text();
-      var data;
-      try { data = JSON.parse(raw); } catch (e) { data = { text: raw.slice(0, 400) }; }
-      add(String((data && data.text) || raw).trim());
-      status.textContent = 'ready';
-    } catch (err) {
-      add('Error: ' + err.message);
-      status.textContent = 'error';
-    }
-    go.disabled = false;
+    var text=q.value.trim();if(!text)return;
+    var model=document.getElementById('model').value;
+    q.value='';show();status.textContent='thinking...';go.disabled=true;
+    add('You: '+text+'\n\n...');
+    try{
+      var r=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({prompt:text,model:model}),redirect:'follow'});
+      var raw=await r.text();
+      var data;try{data=JSON.parse(raw);}catch(e){data={text:raw.slice(0,400)};}
+      add(String((data&&data.text)||raw).trim());
+      status.textContent='ready';
+    }catch(err){add('Error: '+err.message);status.textContent='error';}
+    go.disabled=false;
   }
-
   async function floatHud(){
-    if (!('documentPictureInPicture' in window)) {
-      hint.textContent = 'No Document PiP here. Use Chrome on the school PC.';
-      return;
-    }
-    if (!window.isSecureContext || window !== window.top) {
-      hint.textContent = 'Open https://josiasb2.github.io/Lab/ in its own tab.';
-      return;
-    }
-    try {
-      if (window.documentPictureInPicture.window) {
-        window.documentPictureInPicture.window.close();
-      }
-      var pip = await window.documentPictureInPicture.requestWindow({ width: 400, height: 380 });
-      var style = document.querySelector('style');
-      if (style) pip.document.head.appendChild(style.cloneNode(true));
+    if(!('documentPictureInPicture'in window)){hint.textContent='No Float on this browser. Use Chrome on the school PC.';return;}
+    if(!window.isSecureContext||window!==window.top){hint.textContent='Open https://josiasb2.github.io/Lab/ in its own tab.';return;}
+    try{
+      if(window.documentPictureInPicture.window)window.documentPictureInPicture.window.close();
+      var pip=await window.documentPictureInPicture.requestWindow({width:400,height:380});
+      var style=document.querySelector('style');
+      if(style)pip.document.head.appendChild(style.cloneNode(true));
       pip.document.body.appendChild(document.getElementById('app'));
-      pip.document.body.style.margin = '0';
-      pip.document.body.style.height = '100%';
-      hint.textContent = 'Floating. Leave this tab open.';
-      pip.addEventListener('pagehide', function(){
-        var app = pip.document.getElementById('app');
-        if (app) document.body.insertBefore(app, hint);
+      pip.document.body.style.margin='0';pip.document.body.style.height='100%';
+      hint.textContent='Floating. Leave this tab open.';
+      pip.addEventListener('pagehide',function(){
+        var app=pip.document.getElementById('app');
+        if(app)document.body.insertBefore(app,hint);
       });
-    } catch (err) {
-      hint.textContent = 'Float failed: ' + err.message;
-    }
+    }catch(err){hint.textContent='Float failed: '+err.message;}
   }
-
-  go.addEventListener('click', ask);
-  q.addEventListener('keydown', function(e){ if (e.key === 'Enter') ask(); });
-  floatBtn.addEventListener('click', floatHud);
-  if (!('documentPictureInPicture' in window)) {
-    hint.textContent = 'No Document PiP here. Use Chrome on the school PC.';
-  }
-  setTimeout(hide, 1800);
+  go.addEventListener('click',ask);
+  q.addEventListener('keydown',function(e){if(e.key==='Enter')ask();});
+  floatBtn.addEventListener('click',floatHud);
+  setTimeout(hide,1800);
 })();
 </script>
 </body>
