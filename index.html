@@ -38,7 +38,7 @@
     <b>LAB COMPANION</b>
     <span id="status">ready</span>
   </div>
-  <div id="log">Open this from GitHub Pages (https). Click Float. Leave the tab open.</div>
+  <div id="log">Open this from GitHub Pages. Click Float on school Chrome. Leave the tab open.</div>
   <div id="row">
     <select id="model">
       <option value="fast">Fast</option>
@@ -52,7 +52,7 @@
 </div>
 <script>
 (function(){
-  var PROXY = 'https://script.google.com/macros/s/AKfycbzd125BCGEQfSyAyBzgeH0FmkIL7chGh4tiAxAmBjC8uRNO2rsSzXY1NCTVv6NcjHBBpA/exec';
+  var PROXY = 'https://script.google.com/macros/s/AKfycbyiqZURDNz7yco2i9kZZQWLhsGVNv0TbSR5jxhMLYKY24PmXs3f2Tg3ppOXe_KT2CK6qw/exec';
 
   var body = document.body;
   var logEl = document.getElementById('log');
@@ -84,10 +84,6 @@
     logEl.scrollTop = logEl.scrollHeight;
   }
 
-  function proxyReady(){
-    return PROXY && PROXY.indexOf('http') === 0 && PROXY.indexOf('PASTE_') === -1;
-  }
-
   async function ask(){
     var text = q.value.trim();
     if (!text) return;
@@ -97,12 +93,6 @@
     status.textContent = 'thinking...';
     go.disabled = true;
     add('You: ' + text + '\n\n...');
-    if (!proxyReady()) {
-      add('PROXY URL is missing.');
-      status.textContent = 'setup';
-      go.disabled = false;
-      return;
-    }
     try {
       var r = await fetch(PROXY, {
         method: 'POST',
@@ -116,7 +106,7 @@
       add(String((data && data.text) || raw).trim());
       status.textContent = 'ready';
     } catch (err) {
-      add('Error: ' + err.message + '\n\nCheck the Script /exec URL and that access is Anyone.');
+      add('Error: ' + err.message);
       status.textContent = 'error';
     }
     go.disabled = false;
@@ -124,25 +114,18 @@
 
   async function floatHud(){
     if (!('documentPictureInPicture' in window)) {
-      hint.textContent = 'This Chrome/Edge has no Document PiP. Update Chrome.';
+      hint.textContent = 'No Document PiP here. Use Chrome on the school PC.';
       return;
     }
-    if (!window.isSecureContext) {
-      hint.textContent = 'PiP needs HTTPS. Open the GitHub Pages URL, not a USB file.';
-      return;
-    }
-    if (window !== window.top) {
-      hint.textContent = 'PiP needs a top-level tab. Open the Pages URL directly.';
+    if (!window.isSecureContext || window !== window.top) {
+      hint.textContent = 'Open https://josiasb2.github.io/Lab/ in its own tab.';
       return;
     }
     try {
       if (window.documentPictureInPicture.window) {
         window.documentPictureInPicture.window.close();
       }
-      var pip = await window.documentPictureInPicture.requestWindow({
-        width: 400,
-        height: 380
-      });
+      var pip = await window.documentPictureInPicture.requestWindow({ width: 400, height: 380 });
       var style = document.querySelector('style');
       if (style) pip.document.head.appendChild(style.cloneNode(true));
       pip.document.body.appendChild(document.getElementById('app'));
@@ -161,11 +144,8 @@
   go.addEventListener('click', ask);
   q.addEventListener('keydown', function(e){ if (e.key === 'Enter') ask(); });
   floatBtn.addEventListener('click', floatHud);
-
-  if (!window.isSecureContext) {
-    hint.textContent = 'Not HTTPS — Float will fail. Use GitHub Pages.';
-  } else if (!('documentPictureInPicture' in window)) {
-    hint.textContent = 'No Document PiP in this browser.';
+  if (!('documentPictureInPicture' in window)) {
+    hint.textContent = 'No Document PiP here. Use Chrome on the school PC.';
   }
   setTimeout(hide, 1800);
 })();
