@@ -6,98 +6,64 @@
 <title>Lab Companion</title>
 <style>
   html,body{margin:0;height:100%;}
-  body{
-    display:flex;flex-direction:column;box-sizing:border-box;padding:10px;
-    font:13px/1.4 system-ui,-apple-system,Segoe UI,sans-serif;color:#1a1a1e;
-    background:rgba(245,245,248,.72);
-    min-height:100%;
-  }
-  body.dim{opacity:.08;}
+  body{display:flex;flex-direction:column;box-sizing:border-box;padding:10px;
+    font:13px/1.4 system-ui,sans-serif;color:#1a1a1e;background:rgba(245,245,248,.72);min-height:100%;}
   #app{display:flex;flex-direction:column;height:100%;min-height:320px;}
-  #top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;}
+  #top{display:flex;justify-content:space-between;margin-bottom:8px;}
   #top b{font-size:11px;letter-spacing:.08em;color:#3a3a44;}
   #status{font-size:11px;color:#6a6a74;}
-  #log{
-    flex:1;overflow:auto;white-space:pre-wrap;
-    background:rgba(255,255,255,.55);border-radius:12px;padding:10px;
-  }
+  #log{flex:1;overflow:auto;white-space:pre-wrap;background:rgba(255,255,255,.55);border-radius:12px;padding:10px;}
   #row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
   #q,#model,button{border:0;border-radius:12px;padding:10px;font:inherit;}
-  #q{flex:1;min-width:120px;background:rgba(255,255,255,.8);}
-  #model{background:rgba(255,255,255,.8);}
-  button{background:#2ee59d;color:#082016;font-weight:700;cursor:pointer;}
-  button.ghost{background:rgba(255,255,255,.7);}
+  #q{flex:1;min-width:120px;background:#fff;}
+  button{background:#2ee59d;color:#082016;font-weight:700;}
+  button.ghost{background:#fff;}
   .hint{margin-top:6px;font-size:10px;color:#6a6a74;}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="top"><b>LAB COMPANION</b><span id="status">ready</span></div>
-  <div id="log">Type 2+3 then Go. On school Chrome tap Float and leave this tab open.</div>
+  <div id="log">Ask 2+3</div>
   <div id="row">
-    <select id="model">
-      <option value="fast">Fast</option>
-      <option value="smart">Smart</option>
-    </select>
-    <input id="q" placeholder="Ask..." autocomplete="off">
+    <select id="model"><option value="fast">Fast</option><option value="smart">Smart</option></select>
+    <input id="q" placeholder="Ask...">
     <button type="button" id="go">Go</button>
     <button type="button" id="float" class="ghost">Float</button>
   </div>
-  <div class="hint" id="hint">Float works on school Chrome, not iPhone Safari.</div>
+  <div class="hint" id="hint">Float = school Chrome only</div>
 </div>
 <script>
 (function(){
-  var PROXY = 'https://script.google.com/macros/s/AKfycbxGcacaIhVIMuAiKXHcjgSj9w9QCuk1eHzaSB_j4FWsseLFqQp2kdnUrypKjymWq3tbqw/exec';
-  var body=document.body, logEl=document.getElementById('log'), q=document.getElementById('q');
-  var status=document.getElementById('status'), go=document.getElementById('go');
-  var floatBtn=document.getElementById('float'), hint=document.getElementById('hint');
-  var hideTimer=null, locked=false;
-  function show(){body.classList.remove('dim');}
-  function hide(){if(!locked && document.activeElement!==q) body.classList.add('dim');}
-  body.addEventListener('mouseenter',function(){clearTimeout(hideTimer);show();});
-  body.addEventListener('mouseleave',function(){hideTimer=setTimeout(hide,220);});
-  window.addEventListener('keydown',function(e){
-    if(e.altKey&&(e.key==='g'||e.key==='G')){e.preventDefault();
-      if(body.classList.contains('dim'))show();else hide();
-      locked=!body.classList.contains('dim');}
-  });
-  q.addEventListener('focus',show);
-  function add(t){logEl.textContent=t;logEl.scrollTop=logEl.scrollHeight;}
+  var PROXY='https://script.google.com/macros/s/AKfycbxGcacaIhVIMuAiKXHcjgSj9w9QCuk1eHzaSB_j4FWsseLFqQp2kdnUrypKjymWq3tbqw/exec';
+  var logEl=document.getElementById('log'), q=document.getElementById('q');
+  var status=document.getElementById('status'), go=document.getElementById('go'), hint=document.getElementById('hint');
+  function add(t){logEl.textContent=t;}
   async function ask(){
-    var text=q.value.trim();if(!text)return;
+    var text=q.value.trim(); if(!text)return;
     var model=document.getElementById('model').value;
-    q.value='';show();status.textContent='thinking...';go.disabled=true;
+    q.value=''; status.textContent='thinking...'; go.disabled=true;
     add('You: '+text+'\n\n...');
     try{
-      var r=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({prompt:text,model:model}),redirect:'follow'});
-      var raw=await r.text();
-      var data;try{data=JSON.parse(raw);}catch(e){data={text:raw.slice(0,400)};}
+      var url=PROXY+'?prompt='+encodeURIComponent(text)+'&model='+encodeURIComponent(model);
+      var raw=await (await fetch(url)).text();
+      var data; try{data=JSON.parse(raw);}catch(e){data={text:raw.slice(0,400)};}
       add(String((data&&data.text)||raw).trim());
       status.textContent='ready';
-    }catch(err){add('Error: '+err.message);status.textContent='error';}
+    }catch(err){add('Error: '+err.message); status.textContent='error';}
     go.disabled=false;
   }
   async function floatHud(){
-    if(!('documentPictureInPicture'in window)){hint.textContent='No Float on this browser. Use Chrome on the school PC.';return;}
-    if(!window.isSecureContext||window!==window.top){hint.textContent='Open https://josiasb2.github.io/Lab/ in its own tab.';return;}
+    if(!('documentPictureInPicture'in window)){hint.textContent='No Float on iPhone. Use school Chrome.';return;}
     try{
-      if(window.documentPictureInPicture.window)window.documentPictureInPicture.window.close();
-      var pip=await window.documentPictureInPicture.requestWindow({width:400,height:380});
-      var style=document.querySelector('style');
-      if(style)pip.document.head.appendChild(style.cloneNode(true));
+      var pip=await documentPictureInPicture.requestWindow({width:400,height:380});
+      var s=document.querySelector('style'); if(s)pip.document.head.appendChild(s.cloneNode(true));
       pip.document.body.appendChild(document.getElementById('app'));
-      pip.document.body.style.margin='0';pip.document.body.style.height='100%';
-      hint.textContent='Floating. Leave this tab open.';
-      pip.addEventListener('pagehide',function(){
-        var app=pip.document.getElementById('app');
-        if(app)document.body.insertBefore(app,hint);
-      });
     }catch(err){hint.textContent='Float failed: '+err.message;}
   }
-  go.addEventListener('click',ask);
+  document.getElementById('go').onclick=ask;
   q.addEventListener('keydown',function(e){if(e.key==='Enter')ask();});
-  floatBtn.addEventListener('click',floatHud);
-  setTimeout(hide,1800);
+  document.getElementById('float').onclick=floatHud;
 })();
 </script>
 </body>
